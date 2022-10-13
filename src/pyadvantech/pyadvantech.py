@@ -68,7 +68,7 @@ def grab_values(dev_handle):
 
     return out
 
-def printout(dev_handle,plotchannel):
+def printout(dev_handle,channel):
     dev_handle.ctrl_transfer(0x40, 127, 0x0007, 0, (0, 0, 0, 0))
     dev_handle.ctrl_transfer(0x40, 127, 0x0008, 0, (0, 0, 0, 0))
     dev_handle.ctrl_transfer(0x40, 127, 0x0007, 0, (0, 0, 0, 0))
@@ -130,9 +130,6 @@ def printout(dev_handle,plotchannel):
 def setup():
     dev_handle =usb.core.find(idVendor=VENDOR_ID, idProduct=DEVICE_ID)
     return dev_handle
-#dev_handle = setup()
-#set_channel_range(dev_handle, [0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b])
-#printout(dev_handle)
 
 
 
