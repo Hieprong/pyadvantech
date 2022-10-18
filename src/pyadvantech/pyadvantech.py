@@ -132,7 +132,7 @@ def plot_out(dev_handle, channel, x_name=None, y_name=None, x_range=None, update
     ax.minorticks_on()
     ax.grid(which='minor', linestyle=':', linewidth='0.5', color='grey')
     ax.autoscale_view(True, True, True)
-    max_y = 0
+    max_y = 1
     if acquisition_len == "inf":
         while True:
             count, x, y, line1, ax, figure, max_y = read_and_update_plot(dev_handle, x_range, x, count, y, offset,
