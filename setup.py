@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='pyadvantech',
-    version='0.1.4',
+    version='0.2',
     author="Paul Weimer",
     author_email="weimerpaul99@gmail.com",
     description="A custom USB driver for Advantech USB-4718",
@@ -23,5 +23,9 @@ setuptools.setup(
         'matplotlib',
         'libusb',
         'pyusb',
+        'tqdm',
+        'time',
+        'csv',
+        'numpy',
     ],
 )

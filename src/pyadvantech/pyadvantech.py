@@ -3,7 +3,7 @@ import usb.core
 import usb.util
 import time
 import numpy as np
-import datetime
+import csv
 from tqdm import tqdm
 
 VENDOR_ID = 0x1809
@@ -79,26 +79,27 @@ def read(dev_handle):
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
 
 
-def read_and_update_plot(dev_handle, x_range, x, count, y, offset, line1, ax, figure, update):
+def read_and_update_plot(dev_handle, x_range, x, count, y, offset, line1, ax, figure, update, max_y):
     if x_range is None:
         x.append(count)
         count = count + 1
 
     out = read(dev_handle)
-    print(out)
 
     y.append(
         out[offset] * 255 * 255 * 255 + out[offset + 1] * 255 * 255 + out[offset + 2] * 255 + out[offset + 3])
-
-    line1.set_ydata(y)
+    if y[-1] > max_y:
+        max_y = y[-1] * 1.05
+    line1.set_ydata(y[-x_range:])
     line1.set_xdata(x)
-    ax.relim()
+    ax.set_ylim(bottom=0, top=max_y)
+    ax.set_xlim(left=0, right=x[-1])
     ax.autoscale_view(True, True, True)
 
     figure.canvas.draw()
     figure.canvas.flush_events()
     time.sleep(update)
-    return count, x, y, line1, ax, figure
+    return count, x, y, line1, ax, figure, max_y
 
 
 def plot_out(dev_handle, channel, x_name=None, y_name=None, x_range=None, update=None, acquisition_len=None):
@@ -120,23 +121,35 @@ def plot_out(dev_handle, channel, x_name=None, y_name=None, x_range=None, update
     y.append(out[offset] * 255 * 255 * 255 + out[offset + 1] * 255 * 255 + out[offset + 2] * 255 + out[offset + 3])
     count = 1
     if x_range is not None:
-        x = np.linspace(0, x_range, 1)
+        x = np.linspace(0, x_range - 1, x_range).tolist()
+        y = np.zeros(x_range).tolist()
+
     figure, ax = plt.subplots(figsize=(10, 8))
     plt.xlabel(x_name)
+    plt.grid(visible=True, which='major', ds='steps-mid')
     plt.ylabel(y_name)
     line1, = ax.plot(x, y)
+    ax.minorticks_on()
+    ax.grid(which='minor', linestyle=':', linewidth='0.5', color='grey')
     ax.autoscale_view(True, True, True)
+    max_y = 0
     if acquisition_len == "inf":
         while True:
-            count, x, y, line1, ax, figure = read_and_update_plot(dev_handle, x_range, x, count, y, offset, line1, ax,
-                                                                  figure, update)
+            count, x, y, line1, ax, figure, max_y = read_and_update_plot(dev_handle, x_range, x, count, y, offset,
+                                                                         line1, ax,
+                                                                         figure, update, max_y)
     else:
         for i in range(acquisition_len):
-            count, x, y, line1, ax, figure = read_and_update_plot(dev_handle, x_range, x, i + 1, y, offset, line1, ax,
-                                                                  figure, update)
+            count, x, y, line1, ax, figure, max_y = read_and_update_plot(dev_handle, x_range, x, i + 1, y, offset,
+                                                                         line1, ax,
+                                                                         figure, update, max_y)
 
 
-def setup(vendor_id=VENDOR_ID, device_id=DEVICE_ID):
+def setup(vendor_id=None, device_id=None):
+    if vendor_id is None:
+        vendor_id = VENDOR_ID
+    if device_id is None:
+        device_id = DEVICE_ID
     dev_handle = usb.core.find(idVendor=vendor_id, idProduct=device_id)
     return dev_handle
 
@@ -149,13 +162,15 @@ def read_and_save(dev_handle, channel, length=None, update=None, file_name=None)
     if update is None:
         update = 0.1
     if file_name is None:
-        file_name = str(datetime.datetime.now().date()) + "_" + str(datetime.datetime.now().time()) + ".txt"
+        file_name = time.strftime("%Y_%m_%d_%H_%M_%S") + ".csv"
     prepare_read(dev_handle)
-    for _ in tqdm(length):
-        out = read(dev_handle)
-        values.append([str(datetime.datetime.now().time()),
-                       out[offset] * 255 * 255 * 255 + out[offset + 1] * 255 * 255 + out[offset + 2] * 255 + out[
-                           offset + 3]])
-        time.sleep(update)
-    np.savetxt(file_name, values)
+    with open(file_name, 'w', newline='') as fp:
+        for _ in tqdm(range(length)):
+            out = read(dev_handle)
+            values.append([str(time.strftime("%H:%M:%S")),
+                           out[offset] * 255 * 255 * 255 + out[offset + 1] * 255 * 255 + out[offset + 2] * 255 + out[
+                               offset + 3]])
+            time.sleep(update)
+        writer = csv.writer(fp)
+        writer.writerows(values)
     return values
